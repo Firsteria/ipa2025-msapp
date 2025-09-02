@@ -6,13 +6,13 @@
 <body>
     <h1>You are calling me from {{request.remote_addr}}</h1>
     <form method="POST" action="/add">
-    <input name="routerip" placeholder="RouterIP" required />
+    <input name="routerip" placeholder="routerip" required />
     <input name="username" placeholder="username" required />
     <input name="password" placeholder="password" required />
     <button type="submit">Add Comment</button>
   </form>
 
-   <ul>
+  <ul>
     {% for comment in data %}
       <li>
 	       {{ comment.yourname }} - {{ comment.message }}	 
@@ -23,5 +23,3 @@
       </li>
     {% endfor %}
   </ul>
-</body>
-</html>
