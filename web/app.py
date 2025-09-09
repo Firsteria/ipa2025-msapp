@@ -1,46 +1,49 @@
-from flask import Flask
-from flask import request
-from flask import render_template
-from flask import redirect
-from flask import url_for
+import os
+
+from flask import Flask, request, render_template, redirect
 from pymongo import MongoClient
-from bson.objectid import ObjectId
+from bson import ObjectId
+
 
 app = Flask(__name__)
 
-client = MongoClient("mongodb://localhost:27017/")
-mydb = client["ipa2025"]
-collection = mydb["routers"]
+mongo_uri  = os.environ.get("MONGO_URI")
+db_name    = os.environ.get("DB_NAME")
+print(mongo_uri)
+print(db_name)
+client = MongoClient(mongo_uri)
+db = client[db_name]
+routers = db["routers"]
 
-@app.route("/")
-def main():
-    try:
-        data = collection.find({}, {'password':0})
-        return render_template("index.html", data=data)
-    except Exception as e:
-        return f"Error loading data: {e}"
+@app.route("/", methods=["GET"])
+def index():
+    return render_template("index.html", routers=list(routers.find()))
 
 @app.route("/add", methods=["POST"])
-def add_comment():
-    routerip = request.form.get("routerip")
+def add_router():
+    routerip = request.form.get("ip")
     username = request.form.get("username")
     password = request.form.get("password")
 
-    if username and password:
-        collection.insert_one({"routerip": routerip, "username": username, "password": password})
-    return redirect(url_for("main"))
+    if routerip and username and password:
+        routers.insert_one({
+            "ip": routerip,
+            "username": username,
+            "password": password
+        })
+    return redirect("/")
 
-@app.route("/delete", methods=["POST"])
-def delete_comment():
-    try:
-        idx = request.form.get("idx")
-        myquery = {'_id': ObjectId(idx)}
-        collection.delete_one(myquery)
-        #if 0 <= idx < len(data):
-         #   data.pop(idx)
-    except Exception:
-        pass
-    return redirect(url_for("main"))
+@app.route("/delete/<id>", methods=["POST"])
+def delete_router(id):
+    routers.delete_one({"_id": ObjectId(id)})
+    return redirect("/")
+
+interface_status = db["interface_status"]
+
+@app.route("/router/<ip>", methods=["GET"])
+def router_detail(ip):
+    docs = db.interface_status.find({"router_ip": ip}).sort("timestamp", -1).limit(3)
+    return render_template("router_detail.html", router_ip=ip, interface_data=docs)
 
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=8080)
+    app.run(debug=True, host="0.0.0.0", port=8080)
